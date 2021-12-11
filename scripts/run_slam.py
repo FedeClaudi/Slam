@@ -6,7 +6,7 @@ from fcutils.progress import track
 from slam import Wall, Agent
 
 
-f, ax = plt.subplots(figsize=(16, 8))
+f, ax = plt.subplots(figsize=(10, 10))
 cam = Camera(f)
 
 
