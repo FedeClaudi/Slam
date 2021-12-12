@@ -108,8 +108,8 @@ class Ray:
         ax.plot(
             [p0.x, p1.x],
             [p0.y, p1.y],
-            lw=4,
-            ls="--",
+            lw=2,
+            ls=":",
             color=salmon_dark,
             zorder=99,
         )

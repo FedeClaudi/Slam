@@ -19,6 +19,8 @@ class Agent:
     head_color: str = pink
     speed: float = 1
 
+    ray_length = 20
+
     collision_distance = 6
 
     def __init__(
@@ -38,7 +40,10 @@ class Agent:
         self.trajectory = dict(x=[x], y=[y])
 
         # make rays
-        self.rays = [Ray(self, angle, 12) for angle in (-40, -20, 0, 20, 40)]
+        self.rays = [
+            Ray(self, angle, self.ray_length)
+            for angle in (-40, -20, 0, 20, 40)
+        ]
 
         # update rays
         for ray in self.rays:
