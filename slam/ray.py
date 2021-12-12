@@ -7,7 +7,7 @@ from kino.geometry import Vector
 from kino.geometry.point import Point
 from myterial import salmon_dark, blue_light
 
-from slam.geometry import Line, distance
+from slam.geometry import Line, distance, segments_intersection
 from slam.obstacle import Obstacle
 
 
@@ -55,60 +55,25 @@ class Ray:
             Scans through a list of objects to find intersections
         """
         intersection_points: List[Tuple[Point, float, Obstacle]] = []
-        P0 = self.p0
 
         for obj in obstacles:
             # check if the object is closer than the ray length
-            # dist = distance(P0, obj.COM)
-            # if dist > self.length:
-            #     continue
+            dist = distance(self.p0, obj.COM)
+            if dist - (2 * obj.size) > self.length:
+                continue
 
             # get the interesection between the ray line and
             # each edge-line of the obstacle
             obj_intersections: Dict[str, Tuple[Point, float, Obstacle]] = {}
             for name, line in obj.lines.items():
-                # get intersection point
-                intersection = self.line.intersection(line)
+                # get vertice points
+                q0, q1 = obj.points[name[0]], obj.points[name[1]]
+                intersection = segments_intersection(self.p0, self.p1, q0, q1)
                 if intersection is None:
                     continue
 
-                # check that distance < ray lengt
-                dist = distance(P0, intersection)
-                if dist > self.length:
-                    continue
-
-                # check that intersecting the obstacle edge and not rest of line
-                p0 = obj.points[name[0]]
-                p1 = obj.points[name[1]]
-                if line.slope == 1e4:
-                    # vertical line
-                    ys = sorted([p0.y, p1.y])
-                    if not (ys[0] < intersection.y < ys[1]):
-                        continue
-                elif line.slope == 0:
-                    # horizontal line
-                    xs = sorted([p0.x, p1.x])
-                    if not (xs[0] < intersection.x < xs[1]):
-                        continue
-                else:
-                    # angled line
-                    angles = sorted(
-                        [
-                            Vector(p0.x - P0.x, p0.y - P0.y,).angle,
-                            Vector(p1.x - P0.x, p1.y - P0.y,).angle,
-                        ]
-                    )
-                    if not angles[0] < self.angle < angles[1]:
-                        continue
-
-                # check that the ray and not the negative half of the line is intersecting
-                intersection_vec = Vector(
-                    intersection.x - P0.x, intersection.y - P0.y
-                )
-                self_vec = Vector(self.p1.x - P0.x, self.p1.y - P0.y)
-                if intersection_vec.dot(self_vec) < 0:
-                    # wrong angle mate
-                    continue
+                # get distance from intersection
+                dist = distance(self.p0, intersection)
 
                 # all checks passed, keep point
                 obj_intersections[name] = (intersection, dist, obj)
@@ -128,7 +93,8 @@ class Ray:
                 contact_point[2],
                 contact_point[0],  # contact in allocentric coordinates
                 Vector(  # contact in egocentrinc coordinates
-                    contact_point[0].x - P0.x, contact_point[0].y - P0.y,
+                    contact_point[0].x - self.p0.x,
+                    contact_point[0].y - self.p0.y,
                 ).rotate(-self.agent.angle),
                 contact_point[1],  # distances
             )

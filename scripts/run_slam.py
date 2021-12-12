@@ -9,13 +9,13 @@ f, axes = plt.subplots(figsize=(20, 10), ncols=2)
 
 
 # create environment
-env = Environment(100, 100, n_obstacles=20)
+env = Environment(100, 100, n_obstacles=10)
 
 # create agent
-agent = Agent(env, x=10, y=10, angle=90)
+agent = Agent(env, x=2, y=2, angle=45)
 
 # run simulation
-for i in track(range(500)):
+for i in track(range(1000)):
     # move/update agent
     agent.update()
 

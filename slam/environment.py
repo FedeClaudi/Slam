@@ -18,19 +18,37 @@ class Environment:
 
         # create north sout east west walls
         self.walls = [
-            Obstacle((0, -4), 0, width=self.width, height=4, name="south"),
+            Obstacle(
+                (0, -4),
+                0,
+                width=self.width,
+                height=4,
+                name="south",
+                txt_size=12,
+            ),
             Obstacle(
                 (self.width, -4),
                 0,
                 width=4,
                 height=self.height + 8,
                 name="east",
+                txt_size=12,
             ),
             Obstacle(
-                (0, self.height), 0, width=self.width, height=4, name="north"
+                (0, self.height),
+                0,
+                width=self.width,
+                height=4,
+                name="north",
+                txt_size=12,
             ),
             Obstacle(
-                (-4, -4), 0, width=4, height=self.height + 8, name="west"
+                (-4, -4),
+                0,
+                width=4,
+                height=self.height + 8,
+                name="west",
+                txt_size=12,
             ),
         ]
         self.obstacles += self.walls
@@ -56,8 +74,8 @@ class Environment:
 
         # set ax properties
         ax.set(
-            xlim=[-2, self.width + 2],
-            ylim=[-2, self.height + 2],
+            xlim=[-2.5, self.width + 2.5],
+            ylim=[-2.5, self.height + 2.5],
             xlabel="cm",
             ylabel="cm",
         )

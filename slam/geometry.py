@@ -6,10 +6,33 @@ from typing import Union, Optional
 
 from kino.geometry.point import Point
 from kino.geometry import Vector
+from kino.geometry.interpolation import lerp
 
 
 def distance(p1: Union[Point, Vector], p2: Union[Point, Vector]) -> float:
     return np.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+
+
+def segments_intersection(
+    p0: Point, p1: Point, q0: Point, q1: Point
+) -> Optional[Point]:
+    """ Checks for intersections between two line segments defined by two sets of 2 points.
+        https://blogs.sas.com/content/iml/2018/07/09/intersection-line-segments.html
+    """
+    # get parameterrized segments intersection parameter values
+    A = np.array([[p1.x - p0.x, q0.x - q1.x], [p1.y - p0.y, q0.y - q1.y]])
+    b = np.array([q0.x - p0.x, q0.y - p0.y])
+    x_hat = np.linalg.lstsq(A, b.T, rcond=None)[0]
+
+    # check that params in unit square
+    if np.any(x_hat < 0) or np.any(x_hat > 1):
+        return None
+
+    # get intersection point
+    x = lerp(p0.x, p1.x, x_hat[0])
+    y = lerp(p0.y, p1.y, x_hat[0])
+
+    return Point(x, y)
 
 
 class Line:

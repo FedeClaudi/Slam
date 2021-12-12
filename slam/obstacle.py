@@ -17,12 +17,14 @@ class Obstacle:
         width: float,
         height: float,
         name: str,
+        txt_size: int = 8,
     ):
         self.xy = xy
         self.angle = angle
         self.width = width
         self.height = height
         self.name = name
+        self.txt_size = txt_size
 
         # compute the position of vertices
         self.com = Vector(*xy)
@@ -55,6 +57,9 @@ class Obstacle:
             self.xy[0] + self.C_offset.x / 2, self.xy[1] + self.C_offset.y / 2,
         )
 
+        # compute max size (length of diagonal)
+        self.size = self.C_offset.magnitude
+
     def __repr__(self) -> str:
         return f"(Obstacle: {self.name}) - {self.points}"
 
@@ -72,7 +77,13 @@ class Obstacle:
             )
         )
         outline(
-            ax.text(self.COM.x, self.COM.y, self.name, ha="center", size=6,),
+            ax.text(
+                self.COM.x,
+                self.COM.y,
+                self.name,
+                ha="center",
+                size=self.txt_size,
+            ),
             color="white",
             lw=8,
         )

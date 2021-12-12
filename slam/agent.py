@@ -17,7 +17,7 @@ class Agent:
     head_width: float = 1.5
     color: str = blue_dark
     head_color: str = pink
-    speed: float = 0.5
+    speed: float = 1
 
     collision_distance = 6
 
