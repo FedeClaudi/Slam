@@ -31,7 +31,6 @@ class Agent:
         angle: float = 0,
     ):
         self.environment = environment
-        self.map = Map(self)
 
         self.x: float = x
         self.y: float = y
@@ -48,6 +47,9 @@ class Agent:
         # update rays
         for ray in self.rays:
             ray.scan(self.environment.obstacles)
+
+        # initiliaze map
+        self.map = Map(self)
 
     def status(self):
         # print state
@@ -93,13 +95,19 @@ Agent -
 
         # turn based on which ray is touching
         speed = self.speed
+        steer_angle = 0
         if touching[0] and not touching[-1]:
-            self.angle += np.random.uniform(0, 45)
+            steer_angle = np.random.uniform(0, 45)
         elif not touching[0] and touching[-1]:
-            self.angle += np.random.uniform(-45, 0)
+            steer_angle = np.random.uniform(-45, 0)
         elif np.any(touching):
-            self.angle += np.random.uniform(-45, 45)
+            steer_angle = np.random.uniform(-45, 45)
             speed = self.speed * (touching_distance / self.collision_distance)
+
+        self.angle += steer_angle
+
+        self._current_speed = speed
+        self._current_omega = steer_angle
 
         self.x += speed * np.cos(np.radians(self.angle))
         self.y += speed * np.sin(np.radians(self.angle))

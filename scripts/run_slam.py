@@ -2,20 +2,21 @@ import matplotlib.pyplot as plt
 
 from fcutils.progress import track
 
-from slam import Environment, Agent
+from slam import Wall, Agent
 
 
 f, axes = plt.subplots(figsize=(20, 10), ncols=2)
 
 
 # create environment
-env = Environment(100, 100, n_obstacles=10)
+# env = Environment(100, 100, n_obstacles=10)
+env = Wall()
 
 # create agent
-agent = Agent(env, x=2, y=2, angle=80)
+agent = Agent(env, x=20, y=8, angle=90)
 
 # run simulation
-for i in track(range(200)):
+for i in track(range(20)):
     # move/update agent
     agent.update()
 
@@ -28,11 +29,11 @@ env.draw(axes[0])
 agent.draw(axes[0])
 agent.map.draw(axes[1])
 
-axes[1].set(
-    xlim=[-2, env.width + 2],
-    ylim=[-2, env.height + 2],
-    xlabel="cm",
-    ylabel="cm",
-)
+# axes[1].set(
+#     xlim=[-2, env.width + 2],
+#     ylim=[-2, env.height + 2],
+#     xlabel="cm",
+#     ylabel="cm",
+# )
 
 plt.show()

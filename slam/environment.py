@@ -107,5 +107,8 @@ class Wall(Environment):
     """
 
     def __init__(self):
-        super().__init__(60, 60, 1)
-        self.obstacles = [Obstacle((4, 30), 0, 50, 5, "wall")] + self.walls
+        super().__init__(100, 100, 1)
+        self.obstacles = [
+            Obstacle((20, 50), 0, 60, 5, "wall-1"),
+            Obstacle((52, 55), 90, 45, 4, "wall-2"),
+        ] + self.walls
