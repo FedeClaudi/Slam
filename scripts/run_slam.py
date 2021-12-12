@@ -1,34 +1,38 @@
 import matplotlib.pyplot as plt
-from celluloid import Camera
 
 from fcutils.progress import track
 
-from slam import Wall, Agent
+from slam import Environment, Agent
 
 
-f, ax = plt.subplots(figsize=(10, 10))
-cam = Camera(f)
+f, axes = plt.subplots(figsize=(20, 10), ncols=2)
 
 
 # create environment
-env = Wall()
+env = Environment(100, 100, n_obstacles=20)
 
 # create agent
-agent = Agent(env, x=30, y=5, angle=90)
+agent = Agent(env, x=10, y=10, angle=90)
 
 # run simulation
-for i in track(range(100)):
+for i in track(range(500)):
     # move/update agent
     agent.update()
 
-    # re-draw environment
-    env.draw(ax)
 
-    # move and draw environment
-    agent.draw(ax)
+# draw environment
+env.draw(axes[0])
+# env.draw(axes[1])
 
-    # snap
-    cam.snap()
+# move and draw agent and amp
+agent.draw(axes[0])
+agent.map.draw(axes[1])
 
-animation = cam.animate()
-animation.save("animation.mp4")
+axes[1].set(
+    xlim=[-2, env.width + 2],
+    ylim=[-2, env.height + 2],
+    xlabel="cm",
+    ylabel="cm",
+)
+
+plt.show()

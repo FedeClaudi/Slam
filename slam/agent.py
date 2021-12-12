@@ -1,15 +1,14 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle
 import numpy as np
-from typing import List, Dict, Tuple
+
 
 from kino.geometry import Vector
-from kino.geometry.point import Point
-from myterial import blue_dark, pink, salmon_dark, blue_light
+from myterial import blue_dark, pink
 
-from slam.geometry import Line, distance
 from slam.environment import Environment
-from slam.obstacle import Obstacle
+from slam.map import Map
+from slam.ray import Ray
 
 
 class Agent:
@@ -19,6 +18,7 @@ class Agent:
     color: str = blue_dark
     head_color: str = pink
     speed: float = 0.5
+
     collision_distance = 6
 
     def __init__(
@@ -29,6 +29,7 @@ class Agent:
         angle: float = 0,
     ):
         self.environment = environment
+        self.map = Map(self)
 
         self.x: float = x
         self.y: float = y
@@ -37,7 +38,7 @@ class Agent:
         self.trajectory = dict(x=[x], y=[y])
 
         # make rays
-        self.rays = [Ray(self, angle, 12) for angle in (-45, 0, 45)]
+        self.rays = [Ray(self, angle, 12) for angle in (-40, -20, 0, 20, 40)]
 
         # update rays
         for ray in self.rays:
@@ -75,22 +76,28 @@ Agent -
             Moves the agent
         """
         # check if we are within collision distance for any ray
+        touching_distance = self.collision_distance * 2
         touching = [False for n in range(len(self.rays))]
         for n, ray in enumerate(self.rays):
             if ray.contact_point is not None:
-                if ray.contact_distance < self.collision_distance:
+                if ray.contact_point.distance < self.collision_distance:
                     touching[n] = True
+                    touching_distance = min(
+                        touching_distance, ray.contact_point.distance
+                    )
 
         # turn based on which ray is touching
-        if touching[0] and not touching[2]:
+        speed = self.speed
+        if touching[0] and not touching[-1]:
             self.angle += np.random.uniform(0, 45)
-        elif not touching[0] and touching[2]:
+        elif not touching[0] and touching[-1]:
             self.angle += np.random.uniform(-45, 0)
         elif np.any(touching):
             self.angle += np.random.uniform(-45, 45)
+            speed = self.speed * (touching_distance / self.collision_distance)
 
-        self.x += self.speed * np.cos(np.radians(self.angle))
-        self.y += self.speed * np.sin(np.radians(self.angle))
+        self.x += speed * np.cos(np.radians(self.angle))
+        self.y += speed * np.sin(np.radians(self.angle))
         self.trajectory["x"].append(self.x)
         self.trajectory["y"].append(self.y)
 
@@ -101,6 +108,15 @@ Agent -
         # update rays
         for ray in self.rays:
             ray.scan(self.environment.obstacles)
+
+        # update map
+        self.map.add(
+            *[
+                ray.contact_point
+                for ray in self.rays
+                if ray.contact_point is not None
+            ]
+        )
 
     def draw(self, ax: plt.Axes):
         """
@@ -147,140 +163,3 @@ Agent -
             color="k",
             zorder=-1,
         )
-
-
-class Ray:
-    """
-        A lidar ray.
-    """
-
-    def __init__(
-        self,
-        agent: Agent,
-        angle: float,  # relative to agent orientation
-        length: int,
-    ):
-        self.agent = agent
-        self.angle_shift = angle
-        self.length = length
-
-    @property
-    def angle(self) -> float:
-        return self.agent.angle + self.angle_shift
-
-    @property
-    def p0(self) -> Point:
-        """ position of origin of ray """
-        return Point(*self.agent.head_position)
-
-    @property
-    def p1(self) -> Point:
-        """
-            Position of point at end of ray
-        """
-        x = self.length * np.cos(np.radians(self.angle)) + self.p0.x
-        y = self.length * np.sin(np.radians(self.angle)) + self.p0.y
-        return Point(x, y)
-
-    @property
-    def line(self) -> Line:
-        """  Line going through ray points
-        """
-        return Line.from_points(self.p0, self.p1, color=salmon_dark)
-
-    def scan(self, obstacles: List[Obstacle]):
-        """
-            Scans through a list of objects to find intersections
-        """
-        intersection_points: List[Tuple[Point, float]] = []
-        P0 = self.p0
-
-        for obj in obstacles:
-            # get the interesection between the ray line and
-            # each edge-line of the obstacle
-            obj_intersections: Dict[str, Tuple[Point, float]] = {}
-            for name, line in obj.lines.items():
-                # get intersection point
-                intersection = self.line.intersection(line)
-                if intersection is None:
-                    continue
-
-                # check that distance < ray lengt
-                dist = distance(P0, intersection)
-                if dist > self.length:
-                    continue
-
-                # check that intersecting the obstacle edge and not rest of line
-                p0 = obj.points[name[0]]
-                p1 = obj.points[name[1]]
-                if line.slope == 1e4:
-                    # vertical line
-                    ys = sorted([p0.y, p1.y])
-                    if not (ys[0] < intersection.y < ys[1]):
-                        continue
-                elif line.slope == 0:
-                    # horizontal line
-                    xs = sorted([p0.x, p1.x])
-                    if not (xs[0] < intersection.x < xs[1]):
-                        continue
-                else:
-                    # angled line
-                    angles = sorted(
-                        [
-                            Vector(p0.x - P0.x, p0.y - P0.y,).angle,
-                            Vector(p1.x - P0.x, p1.y - P0.y,).angle,
-                        ]
-                    )
-                    if not angles[0] < self.angle < angles[1]:
-                        continue
-
-                # check that the ray and not the negative half of the line is intersecting
-                intersection_vec = Vector(
-                    intersection.x - P0.x, intersection.y - P0.y
-                )
-                self_vec = Vector(self.p1.x - P0.x, self.p1.y - P0.y)
-                if intersection_vec.dot(self_vec) < 0:
-                    # wrong angle mate
-                    continue
-
-                # all checks passed, keep point
-                obj_intersections[name] = (intersection, dist)
-
-            if len(obj_intersections):
-                closest = np.argmin([v[1] for v in obj_intersections.values()])
-                intersection_points.append(
-                    list(obj_intersections.values())[closest]
-                )
-
-        # keep the closest intersection points
-        if intersection_points:
-            closest = np.argmin([v[1] for v in intersection_points])
-            self.contact_point = list(intersection_points)[closest][0]
-            self.contact_distance = list(intersection_points)[closest][1]
-        else:
-            self.contact_point = None
-            self.contact_distance = None
-
-    def draw(self, ax: plt.Axes):
-        p0 = self.p0
-        p1 = self.p1
-
-        ax.plot(
-            [p0.x, p1.x],
-            [p0.y, p1.y],
-            lw=4,
-            ls="--",
-            color=salmon_dark,
-            zorder=99,
-        )
-
-        if self.contact_point is not None:
-            ax.scatter(
-                self.contact_point.x,
-                self.contact_point.y,
-                s=60,
-                lw=1,
-                ec="k",
-                color=blue_light,
-                zorder=100,
-            )

@@ -16,11 +16,11 @@ agents = [
     Agent(env, x=55, y=25, angle=0),  # east
     Agent(env, x=5, y=5, angle=180),  # west
     Agent(env, x=20, y=5, angle=270),  # bottom
-    Agent(env, x=20, y=36, angle=90),  # top
+    Agent(env, x=20, y=55, angle=90),  # top
     Agent(env, x=55, y=25, angle=45),  # east
     Agent(env, x=5, y=5, angle=225),  # west
     Agent(env, x=20, y=5, angle=215),  # bottom
-    Agent(env, x=20, y=36, angle=45),  # top
+    Agent(env, x=20, y=55, angle=45),  # top
 ]
 for ax, agent in zip(axes, agents):
 

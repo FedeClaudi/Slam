@@ -50,6 +50,11 @@ class Obstacle:
             DA=Line.from_points(self.D, self.A),
         )
 
+        # keep center of mass
+        self.COM = Point(
+            self.xy[0] + self.C_offset.x / 2, self.xy[1] + self.C_offset.y / 2,
+        )
+
     def __repr__(self) -> str:
         return f"(Obstacle: {self.name}) - {self.points}"
 
@@ -67,13 +72,7 @@ class Obstacle:
             )
         )
         outline(
-            ax.text(
-                self.xy[0] + self.C_offset.x / 2,
-                self.xy[1] + self.C_offset.y / 2,
-                self.name,
-                ha="center",
-                size=12,
-            ),
+            ax.text(self.COM.x, self.COM.y, self.name, ha="center", size=6,),
             color="white",
             lw=8,
         )

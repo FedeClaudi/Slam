@@ -8,7 +8,9 @@ from slam.plot_utils import BACKGROUND_COLOR
 
 
 class Environment:
-    def __init__(self, width: int, heigh: int, n_obstacles: int = 10):
+    def __init__(
+        self, width: int = 60, heigh: int = 60, n_obstacles: int = 10
+    ):
         self.width = width
         self.height = heigh
 
@@ -43,8 +45,8 @@ class Environment:
                         uniform(10, self.height - 10),
                     ),
                     angle=uniform(0, 360),
-                    width=uniform(1, 5),
-                    height=uniform(1, 5),
+                    width=uniform(5, 20),
+                    height=uniform(5, 20),
                     name=f"Obj {n}",
                 )
             )
@@ -87,5 +89,5 @@ class Wall(Environment):
     """
 
     def __init__(self):
-        super().__init__(60, 40, 1)
+        super().__init__(60, 60, 1)
         self.obstacles = [Obstacle((4, 30), 0, 50, 5, "wall")] + self.walls
