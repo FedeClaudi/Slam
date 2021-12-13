@@ -8,9 +8,7 @@ from slam.plot_utils import BACKGROUND_COLOR
 
 
 class Environment:
-    def __init__(
-        self, width: int = 60, heigh: int = 60, n_obstacles: int = 10
-    ):
+    def __init__(self, width: int = 60, heigh: int = 60, n_obstacles: int = 6):
         self.width = width
         self.height = heigh
 
@@ -55,6 +53,8 @@ class Environment:
 
     def add_obtacles(self, n_obstacles: int):
         self.obstacles = []
+        if not n_obstacles:
+            return
         for n in range(n_obstacles):
             self.obstacles.append(
                 Obstacle(
@@ -72,12 +72,11 @@ class Environment:
     def draw(self, ax: Optional[plt.Axes] = None) -> plt.Axes:
         ax = ax or plt.subplots(figsize=(9, 9))[1]
 
-        # set ax properties
-        ax.set(
-            xlim=[-2.5, self.width + 2.5],
-            ylim=[-2.5, self.height + 2.5],
-            xlabel="cm",
-            ylabel="cm",
+        # set ax lim by plotting transparent boundaries
+        ax.scatter(
+            [-2.5, self.width + 2.5, self.width + 2.5, -2.5],
+            [-2.5, -2.5, self.height + 2.5, self.height + 2.5],
+            alpha=0,
         )
 
         # ax.axis("equal")
@@ -107,8 +106,14 @@ class Wall(Environment):
     """
 
     def __init__(self):
-        super().__init__(100, 100, 1)
+        super().__init__(100, 60, 1)
         self.obstacles = [
-            Obstacle((20, 50), 0, 60, 5, "wall-1"),
-            Obstacle((52, 55), 90, 45, 4, "wall-2"),
+            Obstacle((20, 30), 0, 60, 4, "wall-1"),
+            Obstacle((40, 34), 90, 10, 4, "wall-2"),
+            Obstacle((80, 0), 90, 15, 4, "wall-3"),
         ] + self.walls
+
+
+class Small(Environment):
+    def __init__(self):
+        super().__init__(30, 30, 0)

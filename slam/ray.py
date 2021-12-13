@@ -26,6 +26,8 @@ class Ray:
         self.angle_shift = angle
         self.length = length
 
+        self.events_count = 0  # count every time an object is detected
+
     @property
     def angle(self) -> float:
         return self.agent.angle + self.angle_shift
@@ -98,6 +100,7 @@ class Ray:
                 ).rotate(-self.agent.angle),
                 contact_point[1],  # distances
             )
+            self.events_count += 1
         else:
             self.contact_point = None  # type: ignore
 

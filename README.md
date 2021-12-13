@@ -2,7 +2,7 @@
 
 Playing around with SLAM implementation in Python and Julia.
 
-![](SLAM_img.png)
+![](SLAM.png)
 
 Roadmap (working on Python only for now):
 - [x] Environment

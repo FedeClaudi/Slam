@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from celluloid import Camera
+import numpy as np
 
 from fcutils.progress import track
 
@@ -12,14 +13,13 @@ f, axes = plt.subplots(figsize=(20, 10), ncols=2)
 cam = Camera(f)
 
 
-# create environment
-# env = Environment(100, 100, n_obstacles=10)
+# create Wall
+# env = Wall(100, 100, n_obstacles=10)
 env = Wall()
 
 
 # create agent
-# agent = Agent(env, x=2, y=2, angle=45)
-agent = Agent(env, x=20, y=8, angle=90)
+agent = Agent(env, x=20, y=5, angle=np.random.uniform(10, 80))
 
 
 # run simulation

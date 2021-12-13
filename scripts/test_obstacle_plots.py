@@ -18,7 +18,7 @@ agents = [
     Agent(env, x=30, y=25, angle=90),
     Agent(env, x=25, y=25, angle=45),
     Agent(env, x=45, y=40, angle=180),
-    Agent(env, x=30, y=50, angle=270),
+    Agent(env, x=28, y=50, angle=270),
 ]
 for ax, agent in zip(axes, agents):
 

@@ -95,22 +95,25 @@ Agent -
 
         # turn based on which ray is touching
         speed = self.speed
-        steer_angle = 0
+        steer_angle = np.random.uniform(-5, 5)
         if touching[0] and not touching[-1]:
+            # left ray touching -> turn right
             steer_angle = np.random.uniform(0, 45)
         elif not touching[0] and touching[-1]:
+            # right ray touching -> turn left
             steer_angle = np.random.uniform(-45, 0)
         elif np.any(touching):
-            steer_angle = np.random.uniform(-45, 45)
+            # something else touching, turn more
+            steer_angle = np.random.uniform(-80, 80)
             speed = self.speed * (touching_distance / self.collision_distance)
-
-        self.angle += steer_angle
 
         self._current_speed = speed
         self._current_omega = steer_angle
 
         self.x += speed * np.cos(np.radians(self.angle))
         self.y += speed * np.sin(np.radians(self.angle))
+        self.angle += steer_angle
+
         self.trajectory["x"].append(self.x)
         self.trajectory["y"].append(self.y)
 
@@ -131,7 +134,7 @@ Agent -
             ]
         )
 
-    def draw(self, ax: plt.Axes):
+    def draw(self, ax: plt.Axes, just_agent: bool = False):
         """
             Draws the agent as a rectangle with a circle for head
         """
@@ -163,16 +166,18 @@ Agent -
             )
         )
 
-        # add rays
-        for ray in self.rays:
-            ray.draw(ax)
+        if not just_agent:
+            # add rays
+            for ray in self.rays:
+                ray.draw(ax)
 
-        # draw trace
-        ax.plot(
-            self.trajectory["x"],
-            self.trajectory["y"],
-            lw=3,
-            ls=":",
-            color="k",
-            zorder=-1,
-        )
+            # draw trace
+            ax.plot(
+                self.trajectory["x"],
+                self.trajectory["y"],
+                lw=0.5,
+                ls=":",
+                color="k",
+                zorder=-1,
+                alpha=0.5,
+            )
