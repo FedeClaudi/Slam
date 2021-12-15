@@ -24,7 +24,7 @@ plt.show()
 if Confirm.ask("Continue?"):
 
     # run simulation
-    for i in track(range(2500)):
+    for i in track(range(25)):
         # move/update agent
         agent.update()
 

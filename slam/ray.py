@@ -1,10 +1,11 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 from dataclasses import dataclass
 
 from kino.geometry import Vector
 from kino.geometry.point import Point
+from kino.geometry.interpolation import lerp
 from myterial import salmon_dark, blue_light
 
 from slam.geometry import Line, distance, segments_intersection
@@ -51,6 +52,38 @@ class Ray:
         """  Line going through ray points
         """
         return Line.from_points(self.p0, self.p1, color=salmon_dark)
+
+    def sample(self, n: int = 5) -> List[Point]:
+        """
+            Sample n points along the ray from p0 to p1, included.
+            Returns points carrying information of their distance along the ray as well/
+        """
+        pts: List[Point] = []
+        for p in np.linspace(0, 1, n):
+            pt = Point(
+                lerp(self.p0.x, self.p1.x, p), lerp(self.p0.y, self.p1.y, p)
+            )
+            pt.distance = lerp(0, self.length, p)
+            pts.append(pt)
+        return pts
+
+    def sample_at_distance(self, distance: float) -> Optional[Point]:
+        """
+            Returns a point at a sampled distance along the ray
+        """
+        if distance == 0:
+            factor: float = 0
+        elif distance > self.length:
+            return None
+        else:
+            factor = distance / self.length
+
+        pt = Point(
+            lerp(self.p0.x, self.p1.x, factor),
+            lerp(self.p0.y, self.p1.y, factor),
+        )
+        pt.distance = distance
+        return pt
 
     def scan(self, obstacles: List[Obstacle]):
         """
