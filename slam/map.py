@@ -102,7 +102,6 @@ class Map:
             self.agent_trajectory["x"],
             self.agent_trajectory["y"],
             lw=1,
-            ls=":",
             color="k",
             zorder=-1,
             alpha=0.5,

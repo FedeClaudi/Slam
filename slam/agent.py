@@ -1,14 +1,95 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle
 import numpy as np
+from typing import Optional, List, Tuple
+from loguru import logger
 
-
+from kino.geometry.point import Point
 from kino.geometry import Vector
 from myterial import blue_dark, pink
 
 from slam.environment import Environment
 from slam.map import Map
 from slam.ray import Ray
+
+
+class BehavioralRoutine:
+    name = "base routine"
+
+    def __init__(self, n_steps: Optional[int] = None):
+        self.n_steps = n_steps
+        self.steps_count = 0
+        logger.debug(f"Initiate behavoioral routine: {self.name}")
+
+    @property
+    def completed(self) -> bool:
+        if self.n_steps is None:
+            return False
+        return self.steps_count == self.n_steps
+
+
+class Explore(BehavioralRoutine):
+    name: str = "exploration"
+
+    def __init__(self):
+        super().__init__()
+
+    def get_commands(
+        self, agent, touching: List[bool], touching_distance: float
+    ) -> Tuple[float, float]:
+        # turn based on which ray is touching
+        speed = agent.speed
+        steer_angle = np.random.uniform(-10, 10)
+        if touching[0] and not touching[-1]:
+            # left ray touching -> turn right
+            steer_angle = np.random.uniform(0, 25)
+        elif not touching[0] and touching[-1]:
+            # right ray touching -> turn left
+            steer_angle = np.random.uniform(-25, 0)
+        elif np.any(touching):
+            # something else touching, turn more
+            steer_angle = np.random.uniform(-25, 25)
+            speed = agent.speed * (
+                touching_distance / agent.collision_distance
+            )
+        return speed, steer_angle
+
+
+class Backtrack(BehavioralRoutine):
+    name = "back track"
+
+    def __init__(self):
+        super().__init__(n_steps=3)
+
+    def get_commands(
+        self, agent, touching: List[bool], touching_distance: float
+    ) -> Tuple[float, float]:
+        if self.steps_count < self.n_steps - 1:  # type: ignore
+            speed = -agent.speed
+            steer_angle = 0
+        else:
+            speed = 0
+            steer_angle = np.random.uniform(120, 240)
+        self.steps_count += 1
+        return speed, steer_angle
+
+
+class SpinScan(BehavioralRoutine):
+    name = "spin scan"
+
+    def __init__(self):
+        super().__init__(n_steps=20)
+
+    def get_commands(
+        self, agent, touching: List[bool], touching_distance: float
+    ) -> Tuple[float, float]:
+        self.steps_count += 1
+        return 0, 360 / self.n_steps  # type: ignore
+
+
+# ---------------------------------------------------------------------------- #
+#                                     AGENT                                    #
+# ---------------------------------------------------------------------------- #
 
 
 class Agent:
@@ -19,7 +100,7 @@ class Agent:
     head_color: str = pink
     speed: float = 1
 
-    ray_length = 20
+    ray_length = 14
 
     collision_distance = 6
 
@@ -31,6 +112,13 @@ class Agent:
         angle: float = 0,
     ):
         self.environment = environment
+
+        if self.environment.is_point_in_obstacle(Point(x, y)):
+            logger.info(
+                "Initial Agent point was in an obstacle, picked a random one instead."
+            )
+            point = self.environment.random_point()
+            x, y = point.x, point.y
 
         self.x: float = x
         self.y: float = y
@@ -50,6 +138,8 @@ class Agent:
 
         # initiliaze map
         self.map = Map(self)
+
+        self._current_routine: BehavioralRoutine = Explore()
 
     def status(self):
         # print state
@@ -78,12 +168,12 @@ Agent -
         head_shift = Vector(self.height / 2, 0).rotate(self.angle)
         return (self.COM + head_shift).as_array()
 
-    def move(self):
+    def check_touching(self) -> Tuple[List[bool], float]:
         """
-            Moves the agent
+            Checks which of the rays are touching an object and returns the 
+            distance of the closest objct
         """
-        # check if we are within collision distance for any ray
-        touching_distance = self.collision_distance * 2
+        touching_distance: float = self.collision_distance * 2
         touching = [False for n in range(len(self.rays))]
         for n, ray in enumerate(self.rays):
             if ray.contact_point is not None:
@@ -92,21 +182,38 @@ Agent -
                     touching_distance = min(
                         touching_distance, ray.contact_point.distance
                     )
+        return touching, touching_distance
 
-        # turn based on which ray is touching
-        speed = self.speed
-        steer_angle = np.random.uniform(-5, 5)
-        if touching[0] and not touching[-1]:
-            # left ray touching -> turn right
-            steer_angle = np.random.uniform(0, 45)
-        elif not touching[0] and touching[-1]:
-            # right ray touching -> turn left
-            steer_angle = np.random.uniform(-45, 0)
-        elif np.any(touching):
-            # something else touching, turn more
-            steer_angle = np.random.uniform(-80, 80)
-            speed = self.speed * (touching_distance / self.collision_distance)
+    def select_routine(self, touching: List[bool], touching_distance: float):
+        """
+            Selects which routine to execute
+        """
+        if self._current_routine.name == "exploration":
+            if touching_distance < self.speed:
+                if touching[0] and touching[-1]:
+                    self._current_routine = Backtrack()
 
+            elif np.random.rand() < 0.01 and np.any(touching):
+                # do a spin
+                self._current_routine = SpinScan()
+        else:
+            if self._current_routine.completed:
+                self._current_routine = Explore()
+
+    def move(self):
+        """
+            Moves the agent
+        """
+        # check if we are within collision distance for any ray
+        touching, touching_distance = self.check_touching()
+
+        # get movement commands
+        self.select_routine(touching, touching_distance)
+        speed, steer_angle = self._current_routine.get_commands(
+            self, touching, touching_distance
+        )
+
+        # store variables and move
         self._current_speed = speed
         self._current_omega = steer_angle
 
@@ -176,7 +283,6 @@ Agent -
                 self.trajectory["x"],
                 self.trajectory["y"],
                 lw=0.5,
-                ls=":",
                 color="k",
                 zorder=-1,
                 alpha=0.5,

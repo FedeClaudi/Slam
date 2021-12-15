@@ -63,6 +63,39 @@ class Obstacle:
     def __repr__(self) -> str:
         return f"(Obstacle: {self.name}) - {self.points}"
 
+    def contains(self, point: Point) -> bool:
+        """
+            Checks if a point is within the rectangle
+            from: https://martin-thoma.com/how-to-check-if-a-point-is-inside-a-rectangle/
+        """
+
+        area_rectangle = 0.5 * abs(
+            (self.A.y - self.C.y) * (self.D.x - self.B.x)
+            + (self.B.y - self.D.y) * (self.A.x - self.C.x)
+        )
+
+        ABP = 0.5 * (
+            self.A.x * (self.B.y - self.C.y)
+            + self.B.x * (self.C.y - self.A.y)
+            + self.C.x * (self.A.y - self.B.y)
+        )
+        BCP = 0.5 * (
+            self.B.x * (self.C.y - self.D.y)
+            + self.C.x * (self.D.y - self.B.y)
+            + self.D.x * (self.B.y - self.C.y)
+        )
+        CDP = 0.5 * (
+            self.C.x * (self.D.y - self.A.y)
+            + self.D.x * (self.A.y - self.C.y)
+            + self.A.x * (self.C.y - self.D.y)
+        )
+        DAP = 0.5 * (
+            self.D.x * (self.A.y - self.B.y)
+            + self.A.x * (self.B.y - self.D.y)
+            + self.B.x * (self.D.y - self.A.y)
+        )
+        return area_rectangle == (ABP + BCP + CDP + DAP)
+
     def draw(self, ax: plt.Axes):
         ax.add_artist(
             Rectangle(
@@ -71,7 +104,7 @@ class Obstacle:
                 self.height,
                 self.angle,
                 color=[0.2, 0.2, 0.2],
-                hatch="/////",
+                hatch=r"////",
                 fill=False,
                 lw=2,
             )

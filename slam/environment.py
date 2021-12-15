@@ -1,14 +1,20 @@
-from typing import Optional
+from typing import Optional, Union
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from numpy.random import uniform
+import numpy as np
+
+from kino.geometry import Vector
+from kino.geometry.point import Point
 
 from slam.obstacle import Obstacle
 from slam.plot_utils import BACKGROUND_COLOR
 
 
 class Environment:
-    def __init__(self, width: int = 60, heigh: int = 60, n_obstacles: int = 6):
+    def __init__(
+        self, width: int = 100, heigh: int = 100, n_obstacles: int = 5
+    ):
         self.width = width
         self.height = heigh
 
@@ -55,19 +61,50 @@ class Environment:
         self.obstacles = []
         if not n_obstacles:
             return
+
         for n in range(n_obstacles):
+            pt = self.random_point()
+
             self.obstacles.append(
                 Obstacle(
-                    xy=(
-                        uniform(10, self.width - 10),
-                        uniform(10, self.height - 10),
-                    ),
-                    angle=uniform(0, 360),
-                    width=uniform(5, 20),
-                    height=uniform(5, 20),
+                    xy=(pt.x, pt.y),
+                    angle=uniform(0, 180),
+                    width=uniform(20, 60),
+                    height=uniform(5, 10),
                     name=f"Obj {n}",
                 )
             )
+
+    def random_point(self) -> Point:
+        """
+            Returns a random point that is not in an obstacle
+        """
+        while True:
+            point = Point(
+                np.random.uniform(10, self.width - 10),
+                np.random.uniform(10, self.height - 10),
+            )
+            if not self.is_point_in_obstacle(point):
+                break
+        return point
+
+    def is_point_in_obstacle(self, point: Union[Vector, Point]) -> bool:
+        """
+            Checks if a point is in any given obstacle
+        """
+        for obs in self.obstacles:
+            if obs.contains(point):
+                return True
+        return False
+
+    def out_of_bounds(self, point: Union[Vector, Point]) -> bool:
+        """
+            Checks if a point is out bounds (outside of environemnt)
+        """
+        if 0 < point.x < self.width and 0 < point.y < self.height:
+            return False
+        else:
+            return True
 
     def draw(self, ax: Optional[plt.Axes] = None) -> plt.Axes:
         ax = ax or plt.subplots(figsize=(9, 9))[1]
@@ -102,7 +139,7 @@ class Environment:
 
 
 class Wall(Environment):
-    """ Environment with a single wall obstacle
+    """ Environment with a few wa;;s
     """
 
     def __init__(self):
@@ -117,3 +154,12 @@ class Wall(Environment):
 class Small(Environment):
     def __init__(self):
         super().__init__(30, 30, 0)
+
+
+class BigBox(Environment):
+    """ Environment with a big box obstacle
+    """
+
+    def __init__(self):
+        super().__init__(60, 60, 1)
+        self.obstacles = [Obstacle((20, 20), 0, 40, 40, "box")] + self.walls
