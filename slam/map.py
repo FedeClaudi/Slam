@@ -1,11 +1,13 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass
+from scipy.stats import norm
+from loguru import logger
 
-from myterial import black, red_dark, blue_dark
+from myterial import black, red_dark, blue_dark, white
 from kino.geometry import Vector
 from kino.geometry.point import Point
 
@@ -23,7 +25,7 @@ class Gaussian:
         ax.add_artist(
             plt.Circle(
                 self.point.xy,  # type: ignore
-                self.std,
+                1,
                 color=blue_dark if self.mean < 0 else red_dark,
                 alpha=0.2 if self.mean > 0 else 1,
                 zorder=-1 if self.mean > 0 else 1,
@@ -39,8 +41,11 @@ class Map:
                 which represents the belief that the point is either free or occupied.
     """
 
-    free_gaussian_radius: float = 1.25
-    occupied_gaussian_radius: float = 0.5
+    free_gaussian_value: float = 1
+    occupied_gaussian_value: float = -1
+
+    free_gaussian_radius: float = 1
+    occupied_gaussian_radius: float = 1
 
     def __init__(self, agent):
         self.agent = agent
@@ -51,6 +56,7 @@ class Map:
         }
 
         self.map_gaussians_events: Dict[int, List[Gaussian]] = dict()
+        self.map_gaussians: Dict[Tuple[int, int], Gaussian] = dict()
         self.time = 0  # to be incremented everytime the map is updated
 
     def add(self, *events: Contact):
@@ -76,7 +82,7 @@ class Map:
                 timestep_gaussians.extend(
                     [
                         Gaussian(
-                            1,
+                            self.free_gaussian_value,
                             self.free_gaussian_radius,
                             point.distance,
                             ray.angle_shift,
@@ -98,7 +104,7 @@ class Map:
                 timestep_gaussians.extend(
                     [
                         Gaussian(
-                            1,
+                            self.free_gaussian_value,
                             self.free_gaussian_radius,
                             point.distance,
                             ray.angle_shift,
@@ -110,7 +116,7 @@ class Map:
                 # store Occupied gaussian
                 timestep_gaussians.append(
                     Gaussian(
-                        -1,
+                        self.occupied_gaussian_value,
                         self.occupied_gaussian_radius,
                         detection_distance,
                         ray.angle_shift,
@@ -120,17 +126,12 @@ class Map:
         self.map_gaussians_events[self.time] = timestep_gaussians
         self.time += 1
 
-    def build(self):
+    def get_agent_trajectory(self) -> Tuple[list, list, list]:
         """
-            Integrates the stored robot motion to reconstruct the position of the dots
+            Reconstructs the agent's trajectory from the first recorded time step
         """
-        self.points_x: List[float] = []
-        self.points_y: List[float] = []
-
         data = pd.DataFrame(self.events)
 
-        # reconstruct vehicle position at each time step
-        ray_names = [str(ray.angle_shift) for ray in self.agent.rays]
         x, y, theta = [0], [0], [0]
         for i, step in data.iterrows():
             thet_rad = np.radians(theta[-1])
@@ -139,8 +140,16 @@ class Map:
             theta.append(theta[-1] + step.omega)
         self.agent_trajectory = dict(x=x, y=y, theta=theta)
 
-        # reconstruct the map gaussians
-        self.map_gaussians: List[Gaussian] = []
+        return x, y, theta
+
+    def get_map_gaussians(self):
+        """
+            Reconstructs the location of the gaussian distributions annotations
+        """
+        x = self.agent_trajectory["x"]
+        y = self.agent_trajectory["y"]
+        theta = self.agent_trajectory["theta"]
+
         for time, gaussians in self.map_gaussians_events.items():
             for gauss in gaussians:
                 # get position of the head
@@ -154,9 +163,30 @@ class Map:
                     x[time] + head_shift.x + np.cos(_theta) * gauss.distance,
                     y[time] + head_shift.y + np.sin(_theta) * gauss.distance,
                 )
-                self.map_gaussians.append(gauss)
+                if gauss.mean > 0:
+                    gauss.point.x, gauss.point.y = (
+                        int(gauss.point.x),
+                        int(gauss.point.y),
+                    )
+                self.map_gaussians[(gauss.point.x, gauss.point.y)] = gauss
 
-        # reconstruct the position of each sensore event
+        # empty dictionary
+        self.map_gaussians_events: Dict[int, List[Gaussian]] = dict()
+
+    def get_events_location(self):
+        """
+            Reconstructs the location of laser-object detection events
+        """
+        x = self.agent_trajectory["x"]
+        y = self.agent_trajectory["y"]
+        theta = self.agent_trajectory["theta"]
+
+        data = pd.DataFrame(self.events)
+        ray_names = [str(ray.angle_shift) for ray in self.agent.rays]
+
+        self.points_x: List[float] = []
+        self.points_y: List[float] = []
+
         for sensor in ray_names:
             delta = np.radians(float(sensor))
             for i, value in data[sensor].iteritems():
@@ -181,7 +211,64 @@ class Map:
                         _y + head_shift.y + np.sin(_theta + delta) * value
                     )
 
-    def draw(self, ax: plt.Axes):
+    def get_grid_map(self):
+        """
+            Creates a 2D grid storing a value at each point, based on the sum
+            of nearby gaussians: used for planning.
+        """
+        self.grid_points: Dict[Tuple[float, float], float] = dict()
+
+        for gauss in self.map_gaussians.values():
+            x, y = round(gauss.point.x, 0), round(gauss.point.y, 0)
+            if (x, y) not in self.grid_points.keys():
+                self.grid_points[(x, y)] = gauss.mean
+
+            # get sets of points around the center of the gaussian
+            Xs = x + gauss.std * np.cos(np.linspace(0, 2 * np.pi, 8))
+            Ys = y + gauss.std * np.sin(np.linspace(0, 2 * np.pi, 8))
+
+            for x, y in zip(Xs, Ys):
+                x, y = round(x, 0), round(y, 0)
+                if (x, y) not in self.grid_points.keys():
+                    self.grid_points[(x, y)] = 0.1
+
+                if self.grid_points[(x, y)] >= 0:
+                    self.grid_points[(x, y)] += (
+                        2 * norm.pdf(gauss.std, 0, gauss.std)
+                    ) * np.sign(gauss.mean)
+
+    def grid_point_confidence(self, value: float) -> int:
+        """
+            Given a grid point value, returns the confidence about it
+            being an open spot (-1 for obstacle, 1 for certainly open otherwise 0)
+        """
+        if value < 0:
+            return -1
+        elif value < 0.75:
+            return 0
+        else:
+            return 1
+
+    def build(self):
+        """
+            Integrates the stored robot motion to reconstruct the position of the dots
+        """
+        # reconstruct agent position at each time step
+        x, y, theta = self.get_agent_trajectory()
+
+        # reconstruct the map gaussians
+        self.get_map_gaussians()
+
+        # reconstruct the position of each sensore event
+        self.get_events_location()
+
+        # reconstruct grid
+        self.get_grid_map()
+        logger.debug(
+            f"Map built - {len(self.points_y)} event time steps, {len(self.map_gaussians)} annotated gaussians"
+        )
+
+    def draw(self, ax: plt.Axes, ax2: Optional[plt.Axes] = None):
         # build map points
         self.build()
 
@@ -209,14 +296,39 @@ class Map:
             lw=1,
             color="k",
             zorder=100,
-            alpha=0.5,
+            alpha=1,
             label="agent trajectory",
         )
 
         # plot gaussians
-        for gauss in self.map_gaussians:
-            gauss.draw(ax)
+        # for gauss in self.map_gaussians.values():
+        #     gauss.draw(ax)
 
-        ax.scatter(0, 0, color=red_dark, s=5, label="mapped places")
+        # plot points grid
+        x = [k[0] for k in self.grid_points.keys()]
+        y = [k[1] for k in self.grid_points.keys()]
+        val = [
+            self.grid_point_confidence(v) for v in self.grid_points.values()
+        ]
+        ax.scatter(
+            x,
+            y,
+            c=val,
+            cmap="bwr",
+            vmin=-1,
+            vmax=1,
+            lw=0.5,
+            ec="k",
+            s=20,
+            alpha=0.7,
+        )
+
+        # plot points for legend
+        ax.scatter(0, 0, color=red_dark, s=20, zorder=-100, label="accesible")
+        ax.scatter(
+            0, 0, color=blue_dark, s=20, zorder=-100, label="inaccessible"
+        )
+        ax.scatter(0, 0, color=white, s=20, zorder=-100, label="uncertain")
+
         ax.legend()
         ax.axis("off")

@@ -15,7 +15,7 @@ agent = Agent(env, x=20, y=10, angle=np.random.uniform(10, 80))
 
 
 # run simulation
-for i in track(range(500)):
+for i in track(range(100)):
     # move/update agent
     agent.update()
 
@@ -28,7 +28,7 @@ for i in track(range(500)):
         break
 
 # draw environment
-f, axes = plt.subplots(figsize=(20, 10), ncols=2)
+f, axes = plt.subplots(figsize=(25, 10), ncols=2)
 env.draw(axes[0])
 
 # draw agent and map
@@ -37,6 +37,7 @@ agent.map.draw(axes[1])
 
 axes[0].axis("equal")
 axes[1].axis("equal")
+
 
 axes[0].set(title="world view")
 axes[1].set(title="agent view")

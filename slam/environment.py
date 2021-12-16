@@ -13,7 +13,7 @@ from slam.plot_utils import BACKGROUND_COLOR
 
 class Environment:
     def __init__(
-        self, width: int = 100, heigh: int = 100, n_obstacles: int = 3
+        self, width: int = 100, heigh: int = 100, n_obstacles: int = 8
     ):
         self.width = width
         self.height = heigh
