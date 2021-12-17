@@ -33,6 +33,27 @@ class Gaussian:
         )
 
 
+@dataclass
+class GridPoint:
+    x: float
+    y: float
+    value: float = 0.1
+    confidence_threshold: float = 1.5  # only map points with confidence > this are trusted
+
+    @property
+    def confidence(self) -> int:
+        """
+            Returns the confidence about it
+            being an open spot (-1 for obstacle, 1 for certainly open otherwise 0)
+        """
+        if self.value < 0:
+            return -1
+        elif self.value < self.confidence_threshold:
+            return 0
+        else:
+            return 1
+
+
 class Map:
     """ Stores two types of information:
             events: pd.DataFrame with speed/angular velocity at each frame and the distance of 
@@ -216,12 +237,12 @@ class Map:
             Creates a 2D grid storing a value at each point, based on the sum
             of nearby gaussians: used for planning.
         """
-        self.grid_points: Dict[Tuple[float, float], float] = dict()
+        self.grid_points: Dict[Tuple[float, float], GridPoint] = dict()
 
         for gauss in self.map_gaussians.values():
             x, y = round(gauss.point.x, 0), round(gauss.point.y, 0)
             if (x, y) not in self.grid_points.keys():
-                self.grid_points[(x, y)] = gauss.mean
+                self.grid_points[(x, y)] = GridPoint(x, y, value=gauss.mean)
 
             # get sets of points around the center of the gaussian
             Xs = x + gauss.std * np.cos(np.linspace(0, 2 * np.pi, 8))
@@ -230,24 +251,14 @@ class Map:
             for x, y in zip(Xs, Ys):
                 x, y = round(x, 0), round(y, 0)
                 if (x, y) not in self.grid_points.keys():
-                    self.grid_points[(x, y)] = 0.1
+                    self.grid_points[(x, y)] = GridPoint(
+                        x, y, value=norm.pdf(gauss.std, 0, gauss.std)
+                    )
 
-                if self.grid_points[(x, y)] >= 0:
-                    self.grid_points[(x, y)] += (
+                if self.grid_points[(x, y)].value >= 0:
+                    self.grid_points[(x, y)].value += (
                         2 * norm.pdf(gauss.std, 0, gauss.std)
                     ) * np.sign(gauss.mean)
-
-    def grid_point_confidence(self, value: float) -> int:
-        """
-            Given a grid point value, returns the confidence about it
-            being an open spot (-1 for obstacle, 1 for certainly open otherwise 0)
-        """
-        if value < 0:
-            return -1
-        elif value < 0.75:
-            return 0
-        else:
-            return 1
 
     def build(self):
         """
@@ -307,9 +318,7 @@ class Map:
         # plot points grid
         x = [k[0] for k in self.grid_points.keys()]
         y = [k[1] for k in self.grid_points.keys()]
-        val = [
-            self.grid_point_confidence(v) for v in self.grid_points.values()
-        ]
+        val = [v.confidence for v in self.grid_points.values()]
         ax.scatter(
             x,
             y,
