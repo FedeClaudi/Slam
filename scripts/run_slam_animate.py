@@ -21,7 +21,7 @@ env = Environment()
 
 # create agent
 agent = Agent(env, x=20, y=5, angle=np.random.uniform(10, 80))
-
+agent.update_map_every = DRAW_EVERY
 
 # run simulation
 for i in track(range(250)):

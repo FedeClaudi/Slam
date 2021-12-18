@@ -27,14 +27,22 @@ for i in track(range(100)):
         logger.warning("Agent is in an obstacle")
         break
 
+    # if 'navigate' in agent._current_routine.name:
+    #     break
+
+# bagent SLAM - build map and planner helpers
+agent.slam()
+
 # draw environment
-f, axes = plt.subplots(figsize=(25, 10), ncols=2)
+f, axes = plt.subplots(figsize=(20, 8), ncols=2)
 env.draw(axes[0])
 
-# draw agent and map
+# draw agent, map and planner
 agent.draw(axes[0])
 agent.map.draw(axes[1])
+agent.planner.draw(axes[1])
 
+# clean axes
 axes[0].axis("equal")
 axes[1].axis("equal")
 

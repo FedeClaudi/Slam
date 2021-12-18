@@ -11,20 +11,33 @@ from myterial import blue_dark, pink
 from slam.environment import Environment
 from slam.map import Map
 from slam.ray import Ray
-from slam.behavior import BehavioralRoutine, Explore, Backtrack, SpinScan
+from slam.behavior import (
+    BehavioralRoutine,
+    Explore,
+    Backtrack,
+    SpinScan,
+    NavigateToNode,
+)
+from slam.planner import Planner
 
 
 class Agent:
+    # geometry/drawing
     width: int = 3
     height: int = 4
     head_width: float = 1.5
     color: str = blue_dark
     head_color: str = pink
+
+    # movement
     speed: float = 1
 
-    ray_length = 14
+    # LIDAR rays
+    ray_length: int = 14
+    collision_distance: int = 6
 
-    collision_distance = 6
+    # SLAM
+    update_map_every: int = 25  # update map every n timesteps
 
     def __init__(
         self,
@@ -60,26 +73,14 @@ class Agent:
 
         # initiliaze map
         self.map = Map(self)
-
         self._current_routine: BehavioralRoutine = Explore()
 
-    def status(self):
-        # print state
-        print(
-            f"""
-Agent - 
-    x: {self.x:.2f} cm
-    y: {self.y:.2f} cm
-    angle: {self.angle:.2f} deg
-        """
-        )
+        # initialize planner
+        self.planner = Planner()
 
-    def set(self, **kwargs):
-        for k, val in kwargs.items():
-            if k in self.__dict__.keys():
-                setattr(self, k, val)
-            else:
-                raise ValueError(f'Cannot set value for "{k}"')
+        self.n_time_steps = 0
+
+    # -------------------------------- kinematics -------------------------------- #
 
     @property
     def COM(self) -> Vector:
@@ -89,6 +90,15 @@ Agent -
     def head_position(self) -> np.ndarray:
         head_shift = Vector(self.height / 2, 0).rotate(self.angle)
         return (self.COM + head_shift).as_array()
+
+    def set(self, **kwargs):
+        for k, val in kwargs.items():
+            if k in self.__dict__.keys():
+                setattr(self, k, val)
+            else:
+                raise ValueError(f'Cannot set value for "{k}"')
+
+    # --------------------------------- behavior --------------------------------- #
 
     def check_touching(self) -> Tuple[List[bool], float]:
         """
@@ -118,6 +128,20 @@ Agent -
             elif np.random.rand() < 0.005 and np.any(touching):
                 # do a spin
                 self._current_routine = SpinScan()
+
+            elif (
+                np.random.rand() < 0.05
+                and not np.any(touching)
+                and self.n_time_steps > 10
+            ):
+                # explore an 'uncertain' node in the graph
+                self.slam()
+                node = self.planner.get_uncertain_node()
+                if node is not None:
+                    self._current_routine = NavigateToNode(
+                        self, self.planner, node
+                    )
+
         else:
             if self._current_routine.completed:
                 self._current_routine = Explore()
@@ -154,7 +178,7 @@ Agent -
         for ray in self.rays:
             ray.scan(self.environment.obstacles)
 
-        # update map
+        # update map entries
         self.map.add(
             *[
                 ray.contact_point
@@ -162,6 +186,22 @@ Agent -
                 if ray.contact_point is not None
             ]
         )
+
+        # generate map
+        if self.n_time_steps % self.update_map_every == 0:
+            self.slam()
+
+        self.n_time_steps += 1
+
+    # ------------------------------- slam/planning ------------------------------ #
+    def slam(self):
+        """ Builds a map + agent localization and activates the planner
+        """
+        logger.debug(f"Agent, SLAM at timestep: {self.n_time_steps}")
+        self.map.build()
+        self.planner.build(list(self.map.grid_points.values()))
+
+    # ----------------------------------- draw ----------------------------------- #
 
     def draw(self, ax: plt.Axes, just_agent: bool = False):
         """
@@ -181,6 +221,7 @@ Agent -
                 facecolor=self.color,
                 lw=1,
                 edgecolor="k",
+                zorder=100,
             )
         )
         # draw head

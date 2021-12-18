@@ -1,7 +1,10 @@
 # SLAM
 
-Playing around with SLAM implementation in Python and Julia.
+Playing around with SLAM implementation in Python.
 
+
+
+## Diary (dev history)
 Initially (early December 2021) the agent could navigate the environment and use LIDAR to pick up objects. The agent was told when an object was detected and at what distance, and it had knowledge of it's own movements (linear and angular velocity).
 From these it can reconstruct a map of where the detected objects were and what it's location with respect to them was
 ![](SLAM.png)
@@ -16,7 +19,20 @@ Next (16.12.2021), the gaussians are summed at distincting points in the environ
 
 ![](SLAM3.png)
 
-### Roadmap (working on Python only for now):
+(17.12.2021) Using NetworkX and LibPySal to build a graph whose nodes are accessible/uncertain map points connected based on their proximity. The idea is to use this graph + shortest path algorithms to plan routes to goal locations. A new behavioral routine added: it selects a graph node labelled as uncertain and navigates the agent to it to speed up exploration.
+
+![](SLAM5.png)
+
+Not very visible in this image but the grid of points from yesterday is now connected into a 2D graph used for planning.
+
+![](SLAM4.png)
+
+Possible improvements:
+i. instead of randomly selecting an uncertain node to eplore, choose one more intelligently (e.g. lots of uncertain around?)
+ii. create graphs at different resolutions for more efficient planning?
+
+----
+### Roadmap:
 - [x] Environment
   - [x] create randomly populate environments with square objects
 - [x] Agent
@@ -28,11 +44,12 @@ Next (16.12.2021), the gaussians are summed at distincting points in the environ
 - [ ] MAP
   - [x] points information is transformed into a coherent representation
   - [x] the agent is located within the points cloud
-  - [ ] go from points to map
+  - [x] go from points to map
     - [x] assigns +/- gaussians along rays paths
-    - [ ] use gaussians to crate map
-    - [ ] use map to fill in gaps
+    - [x] use gaussians to crate map
+    - [x] use map to fill in gaps
+  - [ ] improve incremental map creation instead of creating from scratch at each SLAM  interation. 
 
 ### Bugs
-- [ x agent escapes the environment occasionally (or enters an obstacle)
-- [ ] agent is initialized in an obstacle in random Env
+- [x] agent escapes the environment occasionally (or enters an obstacle)
+- [x] agent is initialized in an obstacle in random Env

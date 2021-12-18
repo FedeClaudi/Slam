@@ -3,55 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from dataclasses import dataclass
 from scipy.stats import norm
-from loguru import logger
 
-from myterial import black, red_dark, blue_dark, white
+from myterial import black, red_dark, blue_darker, white
 from kino.geometry import Vector
 from kino.geometry.point import Point
 
 from slam.ray import Contact
-
-
-@dataclass
-class Gaussian:
-    mean: float
-    std: float
-    distance: float
-    angle_delta: int
-
-    def draw(self, ax: plt.Axes):
-        ax.add_artist(
-            plt.Circle(
-                self.point.xy,  # type: ignore
-                1,
-                color=blue_dark if self.mean < 0 else red_dark,
-                alpha=0.2 if self.mean > 0 else 1,
-                zorder=-1 if self.mean > 0 else 1,
-            )
-        )
-
-
-@dataclass
-class GridPoint:
-    x: float
-    y: float
-    value: float = 0.1
-    confidence_threshold: float = 1.5  # only map points with confidence > this are trusted
-
-    @property
-    def confidence(self) -> int:
-        """
-            Returns the confidence about it
-            being an open spot (-1 for obstacle, 1 for certainly open otherwise 0)
-        """
-        if self.value < 0:
-            return -1
-        elif self.value < self.confidence_threshold:
-            return 0
-        else:
-            return 1
+from slam._map import Gaussian, GridPoint
 
 
 class Map:
@@ -159,6 +118,10 @@ class Map:
             x.append(x[-1] + step.speed * np.cos(thet_rad))
             y.append(y[-1] + step.speed * np.sin(thet_rad))
             theta.append(theta[-1] + step.omega)
+            if theta[-1] > 360:
+                theta[-1] -= 360
+            elif theta[-1] < 0:
+                theta[-1] += 360
         self.agent_trajectory = dict(x=x, y=y, theta=theta)
 
         return x, y, theta
@@ -275,13 +238,8 @@ class Map:
 
         # reconstruct grid
         self.get_grid_map()
-        logger.debug(
-            f"Map built - {len(self.points_y)} event time steps, {len(self.map_gaussians)} annotated gaussians"
-        )
 
     def draw(self, ax: plt.Axes, ax2: Optional[plt.Axes] = None):
-        # build map points
-        self.build()
 
         # plot reconstructed map points
         ax.scatter(
@@ -311,33 +269,18 @@ class Map:
             label="agent trajectory",
         )
 
-        # plot gaussians
-        # for gauss in self.map_gaussians.values():
-        #     gauss.draw(ax)
-
         # plot points grid
-        x = [k[0] for k in self.grid_points.keys()]
-        y = [k[1] for k in self.grid_points.keys()]
-        val = [v.confidence for v in self.grid_points.values()]
+        x = [k[0] for k, v in self.grid_points.items() if v.confidence < 0]
+        y = [k[1] for k, v in self.grid_points.items() if v.confidence < 0]
         ax.scatter(
-            x,
-            y,
-            c=val,
-            cmap="bwr",
-            vmin=-1,
-            vmax=1,
-            lw=0.5,
-            ec="k",
-            s=20,
-            alpha=0.7,
+            x, y, color=blue_darker, lw=0.5, ec="k", s=20, alpha=1,
         )
 
         # plot points for legend
         ax.scatter(0, 0, color=red_dark, s=20, zorder=-100, label="accesible")
         ax.scatter(
-            0, 0, color=blue_dark, s=20, zorder=-100, label="inaccessible"
+            0, 0, color=blue_darker, s=20, zorder=-100, label="inaccessible"
         )
         ax.scatter(0, 0, color=white, s=20, zorder=-100, label="uncertain")
 
-        ax.legend()
         ax.axis("off")
