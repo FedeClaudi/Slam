@@ -246,8 +246,10 @@ class Map:
             self.points_x,
             self.points_y,
             zorder=150,
-            s=5,
+            s=12,
             color=black,
+            lw=0.5,
+            ec="w",
             label="detected obstacles",
         )
 

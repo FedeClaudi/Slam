@@ -163,3 +163,13 @@ class BigBox(Environment):
     def __init__(self):
         super().__init__(60, 60, 1)
         self.obstacles = [Obstacle((20, 20), 0, 40, 40, "box")] + self.walls
+
+
+class Torus(Environment):
+    """
+        Squared torusn environment
+    """
+
+    def __init__(self):
+        super().__init__(100, 100, 0)
+        self.obstacles = [Obstacle((15, 15), 0, 70, 70, "center")] + self.walls

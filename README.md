@@ -31,6 +31,8 @@ Possible improvements:
 i. instead of randomly selecting an uncertain node to eplore, choose one more intelligently (e.g. lots of uncertain around?)
 ii. create graphs at different resolutions for more efficient planning?
 
+(18.12.2021) improved NavigateToNode routine, now upon reaching the goal node the agent sweeps left/right to scan the area. Also created a new Torus environment to test a new routine: wall hugging.
+
 ----
 ### Roadmap:
 - [x] Environment

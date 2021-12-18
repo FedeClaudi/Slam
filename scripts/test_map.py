@@ -15,7 +15,7 @@ agent = Agent(env, x=20, y=10, angle=np.random.uniform(10, 80))
 
 
 # run simulation
-for i in track(range(100)):
+for i in track(range(50)):
     # move/update agent
     agent.update()
 

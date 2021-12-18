@@ -1,4 +1,4 @@
-from slam.environment import Environment, Wall, Small, BigBox
+from slam.environment import Environment, Wall, Small, BigBox, Torus
 
 from slam.ray import Ray
 

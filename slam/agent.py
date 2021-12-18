@@ -80,6 +80,10 @@ class Agent:
 
         self.n_time_steps = 0
 
+        self.routine_name: List[
+            int
+        ] = []  # store which routine is done at each timestep
+
     # -------------------------------- kinematics -------------------------------- #
 
     @property
@@ -130,7 +134,7 @@ class Agent:
                 self._current_routine = SpinScan()
 
             elif (
-                np.random.rand() < 0.05
+                np.random.rand() < 0.01
                 and not np.any(touching)
                 and self.n_time_steps > 10
             ):
@@ -192,6 +196,7 @@ class Agent:
             self.slam()
 
         self.n_time_steps += 1
+        self.routine_name.append(self._current_routine.ID)
 
     # ------------------------------- slam/planning ------------------------------ #
     def slam(self):
@@ -250,3 +255,17 @@ class Agent:
                 zorder=-1,
                 alpha=0.5,
             )
+
+            # mark routine at each timestep
+            # ax.scatter(
+            #     self.trajectory["x"][:-1],
+            #     self.trajectory["y"][:-1],
+            #     c=self.routine_name,
+            #     s=20,
+            #     cmap='Dark2',
+            #     zorder=0,
+            #     alpha=1,
+            #     lw=.5,
+            #     ec='k',
+            #     vmin=-1, vmax=10
+            # )

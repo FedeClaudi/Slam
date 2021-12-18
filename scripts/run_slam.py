@@ -5,11 +5,11 @@ from loguru import logger
 
 from fcutils.progress import track
 
-from slam import Environment, Agent
+from slam import Torus, Agent
 
 
-# create environment
-env = Environment()
+# create env
+env = Torus()
 
 # create agent
 agent = Agent(env, x=20, y=10, angle=np.random.uniform(10, 80))

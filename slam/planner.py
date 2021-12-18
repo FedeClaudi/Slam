@@ -120,11 +120,12 @@ class Planner:
                 node["confidence"] for node in self.graph.nodes.values()
             ],
             cmap="bwr",
-            vmin=-1,
-            vmax=1,
+            vmin=-2,
+            vmax=2,
             edge_color=grey_darker,
-            width=0.75,
+            width=0.75,  # edge widht
             edgecolors=grey_darker,
             ax=ax,
             node_size=20,
+            linewidths=0.5,
         )

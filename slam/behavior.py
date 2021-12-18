@@ -8,7 +8,8 @@ from slam.planner import Planner
 
 
 class BehavioralRoutine:
-    name = "base routine"
+    name: str = "base routine"
+    ID: int = 0
 
     def __init__(self, n_steps: Optional[int] = None):
         self.n_steps = n_steps
@@ -23,7 +24,22 @@ class BehavioralRoutine:
 
 
 class NavigateToNode(BehavioralRoutine):
-    distance_threshold: float = 1
+    ID: int = 1
+
+    distance_threshold: float = 2  # start scanning when close to target
+
+    scan_turn_angles: List[int] = [
+        30,
+        30,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        30,
+        30,
+    ]
 
     def __init__(self, agent, planner: Planner, target_node: dict):
         self.agent = agent
@@ -33,7 +49,9 @@ class NavigateToNode(BehavioralRoutine):
         self.name = f'navigate to node at ({target_node["x"]}, {target_node["y"]}) - agent @ ({self.agent_position()})'
         super().__init__()
 
-        self.point_accessible: bool = True
+        self.interrupt: bool = False
+        self.at_target: bool = False  # switches to true when at node
+        self.scan_frame = -1  # keep track of scan duration
 
     def agent_position(self) -> Vector:
         return Vector(
@@ -41,35 +59,48 @@ class NavigateToNode(BehavioralRoutine):
             self.agent.map.agent_trajectory["y"][-1],
         )
 
+    def check_at_node(self) -> bool:
+        """
+            Checks if the agent is close to the node
+        """
+        if not self.at_target:
+            target = Vector(self.target_node["x"], self.target_node["y"])
+            if (
+                self.agent_position() - target
+            ).magnitude < self.distance_threshold:
+                logger.debug("      reached navigation goal.")
+                return True
+            else:
+                return False
+        else:
+            return self.at_target
+
     @property
     def completed(self) -> bool:
         """
             The routine is completed when the planner decides that the agent is at the node
         """
-        if not self.point_accessible:
-            logger.debug("      reached navigation goal.")
+        if self.interrupt:
+            logger.debug("      navigation interruped.")
             return True
-
-        target = Vector(self.target_node["x"], self.target_node["y"])
-        if (
-            self.agent_position() - target
-        ).magnitude < self.distance_threshold:
-            logger.debug("      reached navigation goal.")
+        elif self.scan_frame >= len(self.scan_turn_angles) - 1:
             return True
         else:
             return False
 
-    def get_commands(
-        self, agent, touching: List[bool], touching_distance: float
+    def _subroutine_navigate(
+        self, touching: List[bool], touching_distance: float
     ) -> Tuple[float, float]:
-
+        """
+            Selects motor commands to navigate to the next node along a route to the goal
+        """
         # get planned route to goal
         try:
             planned_route: List[dict] = self.planner.plan_route(
-                agent, self.target_node
+                self.agent, self.target_node
             )
         except:
-            self.point_accessible = False
+            self.interrupt = True
             return 0, 0
 
         _, _, theta = self.agent.map.get_agent_trajectory()
@@ -82,7 +113,10 @@ class NavigateToNode(BehavioralRoutine):
                 current_node, next_node = planned_route[0], planned_route[3]
             except IndexError:
                 # reached the end
-                self.point_accessible = False
+                logger.debug(
+                    f"      started scanning at {self.agent_position()}."
+                )
+                self.at_target = True
                 return 0, 0
             vect = Vector(
                 next_node["x"] - current_node["x"],
@@ -93,16 +127,32 @@ class NavigateToNode(BehavioralRoutine):
         steer_angle += np.random.uniform(-5, 5)
 
         # get motor commands
-        if not np.all(touching):
-            return 1, steer_angle
-        elif touching_distance < self.agent.collision_distance:
-            self.point_accessible = False
+        if touching_distance < self.agent.collision_distance:
+            # too close to collision, interrupt routine
+            self.interrupt = True
             return 0, 0
         else:
             return 1, steer_angle
 
+    def _subroutine_scan(self) -> Tuple[float, float]:
+        """
+            Makes the agent turn in place to scan an area
+        """
+        return 0, self.scan_turn_angles[self.scan_frame]
+
+    def get_commands(
+        self, agent, touching: List[bool], touching_distance: float
+    ) -> Tuple[float, float]:
+        if not self.at_target:
+            return self._subroutine_navigate(touching, touching_distance)
+        else:
+            self.scan_frame += 1
+            return self._subroutine_scan()
+
 
 class Explore(BehavioralRoutine):
+    ID: int = 2
+
     name: str = "exploration"
 
     def __init__(self):
@@ -130,6 +180,7 @@ class Explore(BehavioralRoutine):
 
 
 class Backtrack(BehavioralRoutine):
+    ID: int = 3
     name = "back track"
 
     def __init__(self):
@@ -149,6 +200,7 @@ class Backtrack(BehavioralRoutine):
 
 
 class SpinScan(BehavioralRoutine):
+    ID: int = 4
     name = "spin scan"
 
     def __init__(self):
