@@ -6,18 +6,19 @@ from rich.prompt import Confirm
 
 from fcutils.progress import track
 
-from slam import Torus, Agent
+from slam import Environment, Agent
 
 
-DRAW_EVERY = 2
-
+DRAW_EVERY = 1
+SLAM_EVERY = 5
+N_FRAMES = 500
 
 # create Environment
-env = Torus()
+env = Environment()
 
 # create agent
 agent = Agent(env, x=20, y=5, angle=np.random.uniform(10, 80))
-agent.update_map_every = DRAW_EVERY
+agent.update_map_every = SLAM_EVERY
 
 # check intial conditions
 f, ax = plt.subplots(figsize=(10, 10))
@@ -32,7 +33,7 @@ if Confirm.ask("Continue?"):
     f.tight_layout()
 
     # run simulation
-    for i in track(range(250)):
+    for i in track(range(N_FRAMES)):
         # move/update agent
         agent.update()
 
@@ -41,8 +42,10 @@ if Confirm.ask("Continue?"):
             env.draw(axes[0])
 
             # move and draw agent and amp
+            agent.map.build()
             agent.draw(axes[0])
             agent.map.draw(axes[1])
+            agent.planner.draw(axes[1])
 
             # snap
             cam.snap()

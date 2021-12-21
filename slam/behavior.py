@@ -14,13 +14,31 @@ class BehavioralRoutine:
     def __init__(self, n_steps: Optional[int] = None):
         self.n_steps = n_steps
         self.steps_count = 0
-        logger.debug(f"Initiate behavoioral routine: {self.name}")
+        logger.debug(f"Initiate behavioral routine: {self.name}")
 
     @property
     def completed(self) -> bool:
         if self.n_steps is None:
             return False
         return self.steps_count == self.n_steps
+
+
+# class FollowWall(BehavioralRoutine):
+#     ID = 5
+#     name = 'follow wall'
+
+#     def __init__(self, touching: List[bool]):
+#         super().__init__(n_steps=20)
+
+#         # check on which side the wall is
+#         if touching[0] and not touching[-1]:
+#             self.touching_side: str = 'left'
+#         elif not touching[0] and touching[1]:
+
+
+#     def get_commands(
+#         self, agent, touching: List[bool], touching_distance: float
+#     ) -> Tuple[float, float]:
 
 
 class NavigateToNode(BehavioralRoutine):
@@ -52,6 +70,7 @@ class NavigateToNode(BehavioralRoutine):
         self.interrupt: bool = False
         self.at_target: bool = False  # switches to true when at node
         self.scan_frame = -1  # keep track of scan duration
+        self.reason: str = ""
 
     def agent_position(self) -> Vector:
         return Vector(
@@ -81,7 +100,9 @@ class NavigateToNode(BehavioralRoutine):
             The routine is completed when the planner decides that the agent is at the node
         """
         if self.interrupt:
-            logger.debug("      navigation interruped.")
+            logger.debug(
+                f"      navigation interruped {self.agent_position()} because: '{self.reason}'."
+            )
             return True
         elif self.scan_frame >= len(self.scan_turn_angles) - 1:
             return True
@@ -100,15 +121,17 @@ class NavigateToNode(BehavioralRoutine):
                 self.agent, self.target_node
             )
         except:
+            self.reason = "planner could not produce route"
             self.interrupt = True
             return 0, 0
 
-        _, _, theta = self.agent.map.get_agent_trajectory()
+        self.agent.map.get_agent_trajectory()
+        theta = self.agent.map.agent_trajectory["theta"]
 
         # get angle between agent orientation and next node
         # by taking the avereage of the next N steps along the route
         steer_angle: float = 0
-        for next_idx in (1, 2, 3):
+        for next_idx in (1, 2):
             try:
                 current_node, next_node = planned_route[0], planned_route[3]
             except IndexError:
@@ -123,12 +146,16 @@ class NavigateToNode(BehavioralRoutine):
                 next_node["y"] - current_node["y"],
             )
             steer_angle -= theta[-1] - vect.angle2
-        steer_angle /= 3
+        steer_angle /= 2
         steer_angle += np.random.uniform(-5, 5)
 
+        if abs(steer_angle) > self.agent.max_turn:
+            steer_angle = self.agent.max_turn * np.sign(steer_angle)
+
         # get motor commands
-        if touching_distance < self.agent.collision_distance:
+        if touching_distance < self.agent.collision_distance / 2:
             # too close to collision, interrupt routine
+            self.reason = "object collision"
             self.interrupt = True
             return 0, 0
         else:
@@ -176,6 +203,12 @@ class Explore(BehavioralRoutine):
             speed = agent.speed * (
                 touching_distance / agent.collision_distance
             )
+        else:
+            # nothing touching, randomly change orientation
+            if np.random.rand() < 0.05:
+                steer_angle = np.random.uniform(
+                    -agent.max_turn, agent.max_turn
+                )
         return speed, steer_angle
 
 
@@ -184,17 +217,18 @@ class Backtrack(BehavioralRoutine):
     name = "back track"
 
     def __init__(self):
-        super().__init__(n_steps=3)
+        super().__init__(n_steps=5)
+        self._steer_angle = np.random.uniform(120, 240) / 3
 
     def get_commands(
         self, agent, touching: List[bool], touching_distance: float
     ) -> Tuple[float, float]:
-        if self.steps_count < self.n_steps - 1:  # type: ignore
+        if self.steps_count < self.n_steps - 4:  # type: ignore
             speed = -agent.speed
             steer_angle = 0
         else:
             speed = 0
-            steer_angle = np.random.uniform(120, 240)
+            steer_angle = self._steer_angle
         self.steps_count += 1
         return speed, steer_angle
 

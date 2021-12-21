@@ -5,15 +5,15 @@ from loguru import logger
 
 from fcutils.progress import track
 
-from slam import Torus, Agent
+from slam import Environment, Agent
 
 
 # create env
-env = Torus()
+env = Environment()
 
 # create agent
 agent = Agent(env, x=20, y=10, angle=np.random.uniform(10, 80))
-agent.update_map_every = 500
+agent.update_map_every = 1000
 
 # check intial conditions
 f, ax = plt.subplots(figsize=(10, 10))

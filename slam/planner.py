@@ -10,7 +10,6 @@ from typing import List, Optional
 from random import choice
 from networkx.algorithms.shortest_paths.generic import shortest_path
 
-from myterial import grey_darker
 from kino.geometry.point import Point
 
 from slam._map import GridPoint
@@ -119,13 +118,13 @@ class Planner:
             node_color=[
                 node["confidence"] for node in self.graph.nodes.values()
             ],
-            cmap="bwr",
-            vmin=-2,
+            cmap="Reds",
+            vmin=-0.5,
             vmax=2,
-            edge_color=grey_darker,
-            width=0.75,  # edge widht
-            edgecolors=grey_darker,
+            width=0.5,  # edge widht
+            edge_color="k",  # edge color
             ax=ax,
-            node_size=20,
-            linewidths=0.5,
+            node_size=0.25 * (self.coordinates.max() - self.coordinates.min()),
+            linewidths=0.5,  # node lw
+            edgecolors="w",  # node ec
         )

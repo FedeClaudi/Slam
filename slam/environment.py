@@ -13,7 +13,7 @@ from slam.plot_utils import BACKGROUND_COLOR
 
 class Environment:
     def __init__(
-        self, width: int = 100, heigh: int = 100, n_obstacles: int = 8
+        self, width: int = 100, heigh: int = 100, n_obstacles: int = 6
     ):
         self.width = width
         self.height = heigh
@@ -69,8 +69,8 @@ class Environment:
                 Obstacle(
                     xy=(pt.x, pt.y),
                     angle=uniform(0, 180),
-                    width=uniform(20, 60),
-                    height=uniform(5, 10),
+                    width=uniform(30, 60),
+                    height=uniform(6, 16),
                     name=f"Obj {n}",
                 )
             )
@@ -81,8 +81,8 @@ class Environment:
         """
         while True:
             point = Point(
-                np.random.uniform(10, self.width - 10),
-                np.random.uniform(10, self.height - 10),
+                np.random.uniform(10, self.width - 20),
+                np.random.uniform(10, self.height - 20),
             )
             if not self.is_point_in_obstacle(point):
                 break

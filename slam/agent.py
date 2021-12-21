@@ -31,6 +31,7 @@ class Agent:
 
     # movement
     speed: float = 1
+    max_turn: int = 60
 
     # LIDAR rays
     ray_length: int = 14
@@ -125,7 +126,9 @@ class Agent:
             Selects which routine to execute
         """
         if self._current_routine.name == "exploration":
+
             if touching_distance < self.speed:
+                # backtrack: avoid collision
                 if touching[0] and touching[-1]:
                     self._current_routine = Backtrack()
 
@@ -133,11 +136,7 @@ class Agent:
                 # do a spin
                 self._current_routine = SpinScan()
 
-            elif (
-                np.random.rand() < 0.01
-                and not np.any(touching)
-                and self.n_time_steps > 10
-            ):
+            elif np.random.rand() < 0.012 and self.n_time_steps > 10:
                 # explore an 'uncertain' node in the graph
                 self.slam()
                 node = self.planner.get_uncertain_node()
@@ -145,7 +144,9 @@ class Agent:
                     self._current_routine = NavigateToNode(
                         self, self.planner, node
                     )
-
+            # elif np.any(touching) and np.random.rand() < .4:
+            # follow object
+            # TODO follow object walls
         else:
             if self._current_routine.completed:
                 self._current_routine = Explore()
@@ -254,6 +255,7 @@ class Agent:
                 color="k",
                 zorder=-1,
                 alpha=0.5,
+                label="trajectory",
             )
 
             # mark routine at each timestep

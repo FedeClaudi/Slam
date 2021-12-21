@@ -33,6 +33,8 @@ ii. create graphs at different resolutions for more efficient planning?
 
 (18.12.2021) improved NavigateToNode routine, now upon reaching the goal node the agent sweeps left/right to scan the area. Also created a new Torus environment to test a new routine: wall hugging.
 
+
+
 ----
 ### Roadmap:
 - [x] Environment

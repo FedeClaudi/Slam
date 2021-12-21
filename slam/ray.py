@@ -29,6 +29,10 @@ class Ray:
 
         self.events_count = 0  # count every time an object is detected
 
+        self.sampled_distance: List[float] = [
+            self.length * p for p in np.linspace(0, 1, 5)
+        ]  # distance values from start to end
+
     @property
     def angle(self) -> float:
         return self.agent.angle + self.angle_shift
@@ -94,7 +98,7 @@ class Ray:
         for obj in obstacles:
             # check if the object is closer than the ray length
             dist = distance(self.p0, obj.COM)
-            if dist - (2 * obj.size) > self.length:
+            if dist - (1.5 * obj.size) > self.length:
                 continue
 
             # get the interesection between the ray line and
