@@ -2,6 +2,19 @@
 
 Playing around with SLAM implementation in Python.
 
+This code sees a simple `Agent` moving in a 2D world populated by rectangular obstacles. The agent has lidar `Ray`s coming out of the head to detect objects nearby. They rays inform the agent of the distance of a detected object and the agent knows the angles that the rays are aimed at (with respect to the agent's body). This information, together with the agent's knowledge of its own movements (linear/angular velocity) is used to reconstruct the position of detected objects in the environment.
+
+The agent builds a map starting from the first time it detects an object, that objects is set at the (0, 0) coordinate of a 2D Cartesian coordinate system. The agent's linear/angular velocity are then integrated to determine the agent's movement from the time of the first object detection in this 2D map, and every time another object is detect its position is noted. 
+The 2D space is then populated with 2D Gaussian distributions. To know wether a location in space is accessible to the agent, nearby Gaussians are summed: those in positions in which no object was detected (i.e. where a lidar ray passed but did not cross an obstacle), the gaussians have a positive weight while those corresponding to detected objects have a strong negative weight. If the result of the sum is below zero, the point is not accessible otherwise it is. 
+
+A 2D grid is sampled across the entire map and the accessibility of each point is assessed as before. Accessible points are then connected in a 2D graph. The agent's position in the graph is determined by the position of the closest node, and standard path planning algorithms on graphs are used to navigate to any other node on the graph.
+For example: during exploration the agent might select an accessible node with low score (i.e. uncertain accessibility) and use the graph to navigate to it and investigate it to increse knowledge about the area. This kind of directed exploration favours more rapid exploration of the environment.
+
+### Installation & Usage
+Clone the repository, `cd` to it and `pip install -e .` to use `slam`.
+The `scripts/` folder containts several scripts to test map creations, ray object detection and to run a simulation in the environment. 
+
+The code is not very well documented since it was a personal investigation into this kind of questions, but get in touch (with an issue) for any questions/suggestions.
 
 
 ## Diary (dev history)
@@ -45,14 +58,14 @@ ii. create graphs at different resolutions for more efficient planning?
   - [x] navigation: agent goes in a straight line until LIDAR rays detect objects nearby, then steers to avoid them
     - [x] add movement routines (full 360 scan, turn scan, backtrack)
     - [ ] add fill in map gaps routine
-- [ ] MAP
+- [x] MAP
   - [x] points information is transformed into a coherent representation
   - [x] the agent is located within the points cloud
   - [x] go from points to map
     - [x] assigns +/- gaussians along rays paths
     - [x] use gaussians to crate map
     - [x] use map to fill in gaps
-  - [ ] improve incremental map creation instead of creating from scratch at each SLAM  interation. 
+  - [x] improve incremental map creation instead of creating from scratch at each SLAM  interation. 
 
 ### Bugs
 - [x] agent escapes the environment occasionally (or enters an obstacle)

@@ -11,7 +11,7 @@ from slam import Environment, Agent
 
 DRAW_EVERY = 1
 SLAM_EVERY = 5
-N_FRAMES = 500
+N_FRAMES = 1000
 
 # create Environment
 env = Environment()
